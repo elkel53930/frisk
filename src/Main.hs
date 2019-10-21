@@ -1,4 +1,6 @@
 import qualified Data.Set as Set
+import qualified System.Process as SP
+
 import Debug.Trace
 
 data SharedVars = SharedVars 
@@ -39,21 +41,21 @@ initState = (Prelude.map fst proc, SharedVars 1 0 0)
 index :: Location -> String
 index name = show . (+) 1 $ length $ takeWhile (\(l, _) -> l /= name) proc
 
--- Process by dot language
 dot :: String
 dot = "digraph {\n" ++ dotLocations proc ++ dotTrans proc ++ "}"
 
 dotLocations :: Process -> String
-dotLocations [] = ""
-dotLocations (p:ps) = "\t" ++  index loc ++ "[label=\"" ++ show loc ++ "\"];\n" ++ dotLocations ps
-    where loc = fst p
+dotLocations = concatMap f
+    where f p = "\t" ++  index loc ++ "[label=\"" ++ show loc ++ "\"];\n" where loc = fst p
 
 dotTrans :: Process -> String
-dotTrans [] = ""
-dotTrans ((from,ts):ps) = (concat $ map f ts) ++ dotTrans ps
-    where f = \(Trans label to _ _) -> "\t" ++  index from ++ " -> " ++ index to ++ "[label=\"" ++ label ++ "\"];\n"
+dotTrans ps = concatMap f ps
+    where f (from,ts) = concatMap g ts where g (Trans label to _ _) = "\t" ++  index from ++ " -> " ++ index to ++ "[label=\"" ++ label ++ "\"];\n"
 
 getTrans :: Location -> [Trans]
 getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
 
-main = putStrLn dot
+main = do
+    writeFile "process.dot" dot
+    SP.createProcess (SP.proc "dot" ["-Tpdf", "process.dot", "-o", "process.pdf"])
+    SP.createProcess (SP.proc "evince" ["process.pdf"])    
