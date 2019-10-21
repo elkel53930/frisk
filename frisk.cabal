@@ -20,6 +20,6 @@ executable frisk
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.10, containers, process
+  build-depends:       base >=4.9 && <4.10, containers, process, interpolate
   hs-source-dirs:      src
   default-language:    Haskell2010
