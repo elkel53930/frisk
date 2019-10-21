@@ -55,7 +55,9 @@ getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
 
 transition :: State -> (Location, Trans) -> (State,Label)
 transition state (from, t) = (State {locations = update (locations state) from (location t), sharedVars = action t $ sharedVars state }, label t)
-    where update ls from to = a ++ to : tail b where (a,b) = break (==from) $ locations state
+    where
+        (a,b) = break (==from) $ locations state
+        update ls from to = a ++ to : tail b
 
 getTransitionables :: State -> [(Location, Trans)]
 getTransitionables state = concatMap (getAvailableTrans $ sharedVars state) $ locations state
