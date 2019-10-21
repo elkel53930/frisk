@@ -61,7 +61,7 @@ getTrans :: Location -> [Trans]
 getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
 
 transition :: State -> (Location, Trans) -> (State,Label)
-transition state (from, t) = (State {locations = update (locations state) from (location t), sharedVars = action t $ sharedVars state }, label t)
+transition state (from, t) = (State {locations = update (locations state) from (location t),step = step state + 1, sharedVars = action t $ sharedVars state }, label t)
     where
         (a,b) = break (==from) $ locations state
         update ls from to = a ++ to : tail b
