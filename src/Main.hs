@@ -15,7 +15,7 @@ type Guard = SharedVars -> Bool
 type Action = SharedVars -> SharedVars
 data Trans = Trans {label :: Label, location :: Location, guard :: Guard, action :: Action} 
 type Process = [(Location, [Trans])]
-type State = ([Location], SharedVars)
+data State = State {locations :: [Location], sharedVars :: SharedVars} deriving (Show,Ord,Eq)
 type Queue = [State]
 type Hash = Set.Set State
 type Logs = [(State,State)]
@@ -36,7 +36,7 @@ proc =
     , ( Q3, [])
     ]
 
-initState = (Prelude.map fst proc, SharedVars 1 0 0)
+initState = State [P0,Q0] $ SharedVars 0 0 0
 
 index :: Location -> String
 index name = show . (+) 1 $ length $ takeWhile (\(l, _) -> l /= name) proc
@@ -54,6 +54,34 @@ dotTrans ps = concatMap f ps
 
 getTrans :: Location -> [Trans]
 getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
+
+transition :: State -> (Location, Trans) -> State
+transition state (from, t) = State {locations = update (locations state) from (location t), sharedVars = action t $ sharedVars state }
+    where update ls from to = a ++ to : tail b where (a,b) = break (==from) $ locations state
+
+getTransitionables :: State -> [(Location, Trans)]
+getTransitionables state = concatMap (getAvailableTrans $ sharedVars state) $ locations state
+    where getAvailableTrans var loc = zipWith (,) (repeat loc) $ filter ((flip $ guard) var) $ getTrans loc -- SharedVars -> Location -> [(Location, Trans)]
+
+transitionAll :: State -> [State]
+transitionAll s = map (transition s) $ getTransitionables s
+
+search :: (Queue, Hash, Logs) -> (Queue, Hash, Logs)
+search ([],hash,logs) = ([],hash,logs)
+search ((state:que), hash, logs) = search
+    ( que ++ news
+    , Set.union hash $ Set.fromList news
+    , logs ++ zipWith (,) (repeat state) nexts
+    )
+    where
+        nexts = transitionAll state
+        news = filter (\x -> not $ Set.member x hash) nexts
+
+display :: (Queue, Hash, Logs) -> String
+display (q,h,l) = "Queue = [\n" ++ dispS q ++ "]\n\nHash = [\n" ++ dispS (Set.toList h) ++ "]\n\nLogs = [\n" ++ dispL
+    where
+        dispS = concatMap (\state -> "\t" ++ show state ++ "\n")
+        dispL = concatMap (\(from,to) -> "\t" ++ (show $ locations from) ++ " -> " ++ (show $ locations to) ++ " " ++ (show $ sharedVars to) ++  "\n") l
 
 main = do
     writeFile "process.dot" dot
