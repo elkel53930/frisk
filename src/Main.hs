@@ -25,13 +25,14 @@ instance Show Trans where
 instance Show State where
     show s = (show $ locations s) ++ "\\n" ++ (dropWhile (/='{') . show $ sharedVars s)
 
-maxLen = 5
+maxLen = 4
 proc :: Process
 proc = 
-    [ ( P1, [Trans "Q en"   P0 (\s -> cq s < maxLen) (\s -> s {cq = cq s + 1})])
-    , ( P0, [Trans "P de"   P1 (\s -> cp s > 0)      (\s -> s {cp = cp s - 1})])
-    , ( Q1, [Trans "P en"   Q0 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
+    [ ( P0, [Trans "P de"   P1 (\s -> cp s > 0)      (\s -> s {cp = cp s - 1})])
+    , ( P1, [Trans "Q en"   P0 (\s -> cq s < maxLen) (\s -> s {cq = cq s + 1})])
     , ( Q0, [Trans "Q de"   Q1 (\s -> cq s > 0)      (\s -> s {cq = cq s - 1})])
+    , ( Q1, [Trans "P en"   Q2 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
+    , ( Q2, [Trans "P en"   Q0 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
     ]
 
 initState = State [P0,Q0] $ SharedVars maxLen 0
