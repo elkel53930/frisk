@@ -1,12 +1,13 @@
 import qualified Data.Set as Set
 import qualified System.Process as SP
+import Data.Semigroup
 
 import Debug.Trace
 
 data SharedVars = SharedVars 
     {
-        cp :: Int,
-        cq :: Int
+        mtx0 :: Int,
+        mtx1 :: Int
     } deriving (Show,Eq,Ord)
 
 type Label = String
@@ -14,7 +15,7 @@ type Guard = SharedVars -> Bool
 type Action = SharedVars -> SharedVars
 data Trans = Trans {label :: Label, location :: Location, guard :: Guard, action :: Action} 
 type Process = [(Location, [Trans])]
-data State = State {locations :: [Location], sharedVars :: SharedVars} deriving (Ord,Eq)
+data State = State {locations :: [Location], step :: Int, sharedVars :: SharedVars}
 type Queue = [State]
 type Hash = Set.Set State
 type Logs = [(Label,State,State)]
@@ -23,19 +24,25 @@ data Location = P0 | P1 | P2 | P3 | P4 | P5 | Q0 | Q1 | Q2 | Q3 | Q4 | Q5 derivi
 instance Show Trans where
     show t = "(Transition " ++ label t ++ " : to " ++ (show $ location t) ++ ")"
 instance Show State where
-    show s = (show $ locations s) ++ "\\n" ++ (dropWhile (/='{') . show $ sharedVars s)
+    show s = (show $ locations s) ++ "\\n" ++ (dropWhile (/='{') . show $ sharedVars s) ++ "\\nstep:" ++ (show $ step s)
+instance Eq State where
+    (State l1 _ s1) == (State l2 _ s2) = l1 == l2 && s1 == s2
+instance Ord State where
+    compare (State l1 _ s1) (State l2 _ s2) = compare l1 l2 <> compare s1 s2
 
-maxLen = 4
 proc :: Process
 proc = 
-    [ ( P0, [Trans "P de"   P1 (\s -> cp s > 0)      (\s -> s {cp = cp s - 1})])
-    , ( P1, [Trans "Q en"   P0 (\s -> cq s < maxLen) (\s -> s {cq = cq s + 1})])
-    , ( Q0, [Trans "Q de"   Q1 (\s -> cq s > 0)      (\s -> s {cq = cq s - 1})])
-    , ( Q1, [Trans "P en"   Q2 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
-    , ( Q2, [Trans "P en"   Q0 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
+    [ ( P0, [Trans "P locks 0"   P1 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
+    , ( P1, [Trans "P locks 1"   P2 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
+    , ( P2, [Trans "P unlocks 1" P3 (\_->True)          (\s -> s {mtx1 = 0})])
+    , ( P3, [Trans "P unlocks 0" P0 (\_->True)          (\s -> s {mtx0 = 0})])
+    , ( Q0, [Trans "Q locks 1"   Q1 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
+    , ( Q1, [Trans "Q locks 0"   Q2 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
+    , ( Q2, [Trans "Q unlocks 0" Q3 (\_->True)          (\s -> s {mtx1 = 0})])
+    , ( Q3, [Trans "Q unlocks 1" Q0 (\_->True)          (\s -> s {mtx0 = 0})])
     ]
 
-initState = State [P0,Q0] $ SharedVars maxLen 0
+initState = State [P0,Q0] 0 $ SharedVars 0 0
 
 count :: (a->Bool) -> [a] -> String
 count f xs = show $ (+) 1 (length $ takeWhile (not . f) xs)
@@ -54,7 +61,7 @@ getTrans :: Location -> [Trans]
 getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
 
 transition :: State -> (Location, Trans) -> (State,Label)
-transition state (from, t) = (State {locations = update (locations state) from (location t), sharedVars = action t $ sharedVars state }, label t)
+transition state (from, t) = (State {locations = update (locations state) from (location t), step = step state + 1, sharedVars = action t $ sharedVars state }, label t)
     where update ls from to = a ++ to : tail b where (a,b) = break (==from) $ locations state
 
 getTransitionables :: State -> [(Location, Trans)]
