@@ -78,10 +78,13 @@ search ((state:que), hash, logs) = search
         (nexts,lbls) = unzip $ transitionAll state
         news = filter (\x -> not $ Set.member x hash) nexts
 
+isDeadlock :: State -> Bool
+isDeadlock s = null $ getTransitionables s
+
 dotResult :: [State] -> Logs -> String
 dotResult states logs = "digraph {\n" ++ dotStates states ++ dotLogs states logs ++ "}" where
     dotStates states = concatMap f states
-        where f s = "\t" ++  (count (==s) states) ++ "[label=\"" ++ show s ++ "\"];\n"
+        where f s = "\t" ++  (count (==s) states) ++ "[label=\"" ++ show s ++ "\"" ++ (if isDeadlock s then ", fillcolor=\"#FF9988\", style=\"filled\"" else "") ++ "];\n"
     dotLogs states logs = concatMap f logs
         where f (lbl,from,to) = "\t" ++  (count (==from) states) ++ " -> " ++ (count (==to) states) ++ "[label=\"" ++ lbl ++ "\"];\n"
 
