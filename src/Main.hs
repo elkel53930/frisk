@@ -97,3 +97,5 @@ main = do
     SP.createProcess (SP.proc "dot" ["-Tpdf", "transition.dot", "-o", "transition.pdf"])
     SP.createProcess (SP.proc "evince" ["process.pdf"])
     SP.createProcess (SP.proc "evince" ["transition.pdf"])
+    putStrLn $ (show $ Set.size hash) ++ " states."
+    putStrLn $ (show $ length logs) ++ " transitions."
