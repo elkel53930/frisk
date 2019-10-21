@@ -5,10 +5,8 @@ import Debug.Trace
 
 data SharedVars = SharedVars 
     {
-        x :: Int,
-        p_t :: Int,
-        q_t :: Int,
-        mtx :: Int
+        mtx0 :: Int,
+        mtx1 :: Int
     } deriving (Show,Eq,Ord)
 
 type Label = String
@@ -29,21 +27,17 @@ instance Show State where
 
 proc :: Process
 proc = 
-    [ ( P0, [Trans "lock"   P1 (\s -> mtx s == 0) (\s -> s {mtx = 1})])
-    , ( P1, [Trans "read"   P2 (\_->True) (\s -> s {p_t = x s})])
-    , ( P2, [Trans "inc"    P3 (\_->True) (\s -> s {p_t = (p_t s) + 1})])
-    , ( P3, [Trans "write"  P4 (\_->True) (\s -> s {x = p_t s})])
-    , ( P4, [Trans "unlock" P5 (\_->True) (\s -> s {mtx = 0})])
-    , ( P5, [])
-    , ( Q0, [Trans "lock"   Q1 (\s -> mtx s == 0) (\s -> s {mtx = 1})])
-    , ( Q1, [Trans "read"   Q2 (\_->True) (\s -> s {q_t = x s})])
-    , ( Q2, [Trans "inc"    Q3 (\_->True) (\s -> s {q_t = (q_t s) + 1})])
-    , ( Q3, [Trans "write"  Q4 (\_->True) (\s -> s {x = q_t s})])
-    , ( Q4, [Trans "unlock" Q5 (\_->True) (\s -> s {mtx = 0})])
-    , ( Q5, [])
+    [ ( P0, [Trans "P locks 0"   P1 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
+    , ( P1, [Trans "P locks 1"   P2 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
+    , ( P2, [Trans "P unlocks 1" P3 (\_->True)          (\s -> s {mtx1 = 0})])
+    , ( P3, [Trans "P unlocks 0" P0 (\_->True)          (\s -> s {mtx0 = 0})])
+    , ( Q0, [Trans "Q locks 1"   Q1 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
+    , ( Q1, [Trans "Q locks 0"   Q2 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
+    , ( Q2, [Trans "Q unlocks 0" Q3 (\_->True)          (\s -> s {mtx1 = 0})])
+    , ( Q3, [Trans "Q unlocks 1" Q0 (\_->True)          (\s -> s {mtx0 = 0})])
     ]
 
-initState = State [P0,Q0] $ SharedVars 0 0 0 0
+initState = State [P0,Q0] $ SharedVars 0 0
 
 count :: (a->Bool) -> [a] -> String
 count f xs = show $ (+) 1 (length $ takeWhile (not . f) xs)
@@ -103,5 +97,5 @@ main = do
     let (_,hash,logs) = search ([initState],Set.singleton initState,[])
     writeFile "transition.dot" $ dotResult (Set.toList hash) logs
     SP.createProcess (SP.proc "dot" ["-Tpdf", "transition.dot", "-o", "transition.pdf"])
-
+    SP.createProcess (SP.proc "evince" ["process.pdf"])
     SP.createProcess (SP.proc "evince" ["transition.pdf"])
