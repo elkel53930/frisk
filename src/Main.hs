@@ -11,13 +11,16 @@ data SharedVars = SharedVars
 type Label = String
 type Guard = SharedVars -> Bool
 type Action = SharedVars -> SharedVars
-data Trans = Trans Label Location Guard Action
+data Trans = Trans {label :: Label, location :: Location, guard :: Guard, action :: Action} 
 type Process = [(Location, [Trans])]
 type State = ([Location], SharedVars)
 type Queue = [State]
 type Hash = Set.Set State
 type Logs = [(State,State)]
 data Location = P0 | P1 | P2 | P3 | Q0 | Q1 | Q2 | Q3 deriving (Show,Eq,Ord)
+
+instance Show Trans where
+    show t = "(Transition " ++ label t ++ " : to " ++ (show $ location t) ++ ")"
 
 proc :: Process
 proc = 
@@ -42,14 +45,15 @@ dot = "digraph {\n" ++ dotLocations proc ++ dotTrans proc ++ "}"
 
 dotLocations :: Process -> String
 dotLocations [] = ""
-dotLocations (p:ps) = "\t" ++  index location ++ "[label=\"" ++ show location ++ "\"];\n" ++ dotLocations ps
-    where location = fst p
+dotLocations (p:ps) = "\t" ++  index loc ++ "[label=\"" ++ show loc ++ "\"];\n" ++ dotLocations ps
+    where loc = fst p
 
 dotTrans :: Process -> String
 dotTrans [] = ""
-dotTrans ((from,ts):ps) = (concat $ map (\(Trans label to _ _) -> "\t" ++  index from ++ " -> " ++ index to ++ "[label=\"" ++ label ++ "\"];\n") ts) ++ dotTrans ps
+dotTrans ((from,ts):ps) = (concat $ map f ts) ++ dotTrans ps
+    where f = \(Trans label to _ _) -> "\t" ++  index from ++ " -> " ++ index to ++ "[label=\"" ++ label ++ "\"];\n"
 
 getTrans :: Location -> [Trans]
-getTrans location = ts where (_,ts) = head $ dropWhile (\(l,_) -> location /= l) proc
+getTrans loc = ts where (_,ts) = head $ dropWhile (\(l,_) -> l /= loc) proc
 
 main = putStrLn dot
