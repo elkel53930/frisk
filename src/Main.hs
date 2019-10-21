@@ -5,8 +5,8 @@ import Debug.Trace
 
 data SharedVars = SharedVars 
     {
-        mtx0 :: Int,
-        mtx1 :: Int
+        cp :: Int,
+        cq :: Int
     } deriving (Show,Eq,Ord)
 
 type Label = String
@@ -25,19 +25,16 @@ instance Show Trans where
 instance Show State where
     show s = (show $ locations s) ++ "\\n" ++ (dropWhile (/='{') . show $ sharedVars s)
 
+maxLen = 5
 proc :: Process
 proc = 
-    [ ( P0, [Trans "P locks 0"   P1 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
-    , ( P1, [Trans "P locks 1"   P2 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
-    , ( P2, [Trans "P unlocks 1" P3 (\_->True)          (\s -> s {mtx1 = 0})])
-    , ( P3, [Trans "P unlocks 0" P0 (\_->True)          (\s -> s {mtx0 = 0})])
-    , ( Q0, [Trans "Q locks 1"   Q1 (\s -> mtx1 s == 0) (\s -> s {mtx1 = 1})])
-    , ( Q1, [Trans "Q locks 0"   Q2 (\s -> mtx0 s == 0) (\s -> s {mtx0 = 1})])
-    , ( Q2, [Trans "Q unlocks 0" Q3 (\_->True)          (\s -> s {mtx1 = 0})])
-    , ( Q3, [Trans "Q unlocks 1" Q0 (\_->True)          (\s -> s {mtx0 = 0})])
+    [ ( P1, [Trans "Q en"   P0 (\s -> cq s < maxLen) (\s -> s {cq = cq s + 1})])
+    , ( P0, [Trans "P de"   P1 (\s -> cp s > 0)      (\s -> s {cp = cp s - 1})])
+    , ( Q1, [Trans "P en"   Q0 (\s -> cp s < maxLen) (\s -> s {cp = cp s + 1})])
+    , ( Q0, [Trans "Q de"   Q1 (\s -> cq s > 0)      (\s -> s {cq = cq s - 1})])
     ]
 
-initState = State [P0,Q0] $ SharedVars 0 0
+initState = State [P0,Q0] $ SharedVars maxLen 0
 
 count :: (a->Bool) -> [a] -> String
 count f xs = show $ (+) 1 (length $ takeWhile (not . f) xs)
