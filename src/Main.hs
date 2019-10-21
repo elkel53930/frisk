@@ -7,7 +7,8 @@ data SharedVars = SharedVars
     {
         x :: Int,
         p_t :: Int,
-        q_t :: Int
+        q_t :: Int,
+        mtx :: Int
     } deriving (Show,Eq,Ord)
 
 type Label = String
@@ -19,7 +20,7 @@ data State = State {locations :: [Location], sharedVars :: SharedVars} deriving 
 type Queue = [State]
 type Hash = Set.Set State
 type Logs = [(Label,State,State)]
-data Location = P0 | P1 | P2 | P3 | Q0 | Q1 | Q2 | Q3 deriving (Show,Eq,Ord)
+data Location = P0 | P1 | P2 | P3 | P4 | P5 | Q0 | Q1 | Q2 | Q3 | Q4 | Q5 deriving (Show,Eq,Ord)
 
 instance Show Trans where
     show t = "(Transition " ++ label t ++ " : to " ++ (show $ location t) ++ ")"
@@ -28,17 +29,21 @@ instance Show State where
 
 proc :: Process
 proc = 
-    [ ( P0, [Trans "read"  P1 (\_->True) (\s -> s {p_t = x s})])
-    , ( P1, [Trans "inc"   P2 (\_->True) (\s -> s {p_t = (p_t s) + 1})])
-    , ( P2, [Trans "write" P3 (\_->True) (\s -> s {x = p_t s})])
-    , ( P3, [])
-    , ( Q0, [Trans "read"  Q1 (\_->True) (\s -> s {q_t = x s})])
-    , ( Q1, [Trans "inc"   Q2 (\_->True) (\s -> s {q_t = (q_t s) + 1})])
-    , ( Q2, [Trans "write" Q3 (\_->True) (\s -> s {x = q_t s})])
-    , ( Q3, [])
+    [ ( P0, [Trans "lock"   P1 (\s -> mtx s == 0) (\s -> s {mtx = 1})])
+    , ( P1, [Trans "read"   P2 (\_->True) (\s -> s {p_t = x s})])
+    , ( P2, [Trans "inc"    P3 (\_->True) (\s -> s {p_t = (p_t s) + 1})])
+    , ( P3, [Trans "write"  P4 (\_->True) (\s -> s {x = p_t s})])
+    , ( P4, [Trans "unlock" P5 (\_->True) (\s -> s {mtx = 0})])
+    , ( P5, [])
+    , ( Q0, [Trans "lock"   Q1 (\s -> mtx s == 0) (\s -> s {mtx = 1})])
+    , ( Q1, [Trans "read"   Q2 (\_->True) (\s -> s {q_t = x s})])
+    , ( Q2, [Trans "inc"    Q3 (\_->True) (\s -> s {q_t = (q_t s) + 1})])
+    , ( Q3, [Trans "write"  Q4 (\_->True) (\s -> s {x = q_t s})])
+    , ( Q4, [Trans "unlock" Q5 (\_->True) (\s -> s {mtx = 0})])
+    , ( Q5, [])
     ]
 
-initState = State [P0,Q0] $ SharedVars 0 0 0
+initState = State [P0,Q0] $ SharedVars 0 0 0 0
 
 count :: (a->Bool) -> [a] -> String
 count f xs = show $ (+) 1 (length $ takeWhile (not . f) xs)
@@ -81,10 +86,14 @@ search ((state:que), hash, logs) = search
 isDeadlock :: State -> Bool
 isDeadlock s = null $ getTransitionables s
 
+decoration :: State -> String
+decoration state = concat
+    [ if isDeadlock state then ", fillcolor=\"#FF9988\", style=\"filled\"" else if state == initState then ", fillcolor=\"#AABBFF\", style=\"filled\"" else ""]
+
 dotResult :: [State] -> Logs -> String
 dotResult states logs = "digraph {\n" ++ dotStates states ++ dotLogs states logs ++ "}" where
     dotStates states = concatMap f states
-        where f s = "\t" ++  (count (==s) states) ++ "[label=\"" ++ show s ++ "\"" ++ (if isDeadlock s then ", fillcolor=\"#FF9988\", style=\"filled\"" else "") ++ "];\n"
+        where f s = "\t" ++  (count (==s) states) ++ "[label=\"" ++ show s ++ "\"" ++ decoration s ++ "];\n"
     dotLogs states logs = concatMap f logs
         where f (lbl,from,to) = "\t" ++  (count (==from) states) ++ " -> " ++ (count (==to) states) ++ "[label=\"" ++ lbl ++ "\"];\n"
 
