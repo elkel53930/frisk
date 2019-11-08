@@ -41,16 +41,16 @@ getTransitionables state = concatMap (getAvailableTrans $ sharedVars state) $ lo
 transitionAll :: State -> [(State,Label)]
 transitionAll s = map (transition s) $ getTransitionables s
 
-search :: (Queue, Hash, Logs) -> (Queue, Hash, Logs)
-search ([],hash,logs) = ([],hash,logs)
-search ((state:que), hash, logs) = search
+search :: (Queue, Table, Logs) -> (Queue, Table, Logs)
+search ([],table,logs) = ([],table,logs)
+search ((state:que), table, logs) = search
     ( que ++ news
-    , Set.union hash $ Set.fromList news
+    , table ++ news
     , logs ++ zipWith3 (,,) lbls (repeat state) nexts
     )
     where
         (nexts,lbls) = unzip $ transitionAll state
-        news = filter (\x -> not $ Set.member x hash) nexts
+        news = filter (\x -> not $ elem x table) nexts
 
 isDeadlock :: State -> Bool
 isDeadlock = null . getTransitionables
@@ -71,11 +71,11 @@ dotResult states logs = [i| digraph {\n#{concatMap f states}#{concatMap g logs}}
 main = do
     writeFile "output/process.dot" dotProcess
     SP.createProcess (SP.proc "dot" ["-Tpdf", "output/process.dot", "-o", "output/process.pdf"])
-    let (_,hash,logs) = search ([initState],Set.singleton initState,[])
-    writeFile "output/transition.dot" $ dotResult (Set.toList hash) logs
+    let (_,table,logs) = search ([initState],[initState],[])
+    writeFile "output/transition.dot" $ dotResult table logs
     SP.createProcess (SP.proc "dot" ["-Tpdf", "output/transition.dot", "-o", "output/transition.pdf"])
     SP.createProcess (SP.proc "dot" ["-Tpng", "output/transition.dot", "-o", "output/transition.png"])
     SP.createProcess (SP.proc "evince" ["output/process.pdf"])
     SP.createProcess (SP.proc "evince" ["output/transition.pdf"])
-    putStrLn [i|#{Set.size hash} states.|]
+    putStrLn [i|#{length table} states.|]
     putStrLn [i|#{length logs} transitions.|]

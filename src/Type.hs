@@ -19,7 +19,7 @@ data Trans = Trans {label :: Label, location :: Location, guard :: Guard, action
 type Process = [(Location, [Trans])]
 data State = State {locations :: [Location], step :: Int, sharedVars :: SharedVars, parent :: State} | Non
 type Queue = [State]
-type Hash = Set.Set State
+type Table = [State]
 type Logs = [(Label,State,State)]
 data Location = P0 | P1 | P2 | P3 | P4 | P5 | Q0 | Q1 | Q2 | Q3 | Q4 | Q5 deriving (Show,Eq,Ord)
 
