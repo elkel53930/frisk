@@ -27,7 +27,8 @@ transition state (from, t) =
     ( State 
         { locations = update (locations state) from (location t)
         , step = step state + 1
-        , sharedVars = action t $ sharedVars state }
+        , sharedVars = action t $ sharedVars state
+        , parent = state }
     , label t)
     where
         (a,b) = break (==from) $ locations state
