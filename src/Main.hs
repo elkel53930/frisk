@@ -1,13 +1,66 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 import Data.String.Interpolate
+import Data.List
 import qualified Data.Set as Set
 import qualified System.Process as SP
 
 import Debug.Trace
 import Type
 
+index :: Eq a => [a] -> a -> Int
+index xs x = length $ takeWhile (/=x) xs
 
+unfold :: Thread -> State -> (States,Unfolded)
+unfold thread initState = ( [initState], conv $ logs )
+    where (_,_,logs) = bfs thread ([initState],Set.empty,[])
+
+conv :: [(Event,State,State)] -> Unfolded
+conv = Set.fromList . map (\(e,s1,s2) -> (e,[s1],[s2]))
+
+-- 同期イベント集合 -> [(初期状態, 合成対象)] -> (合成後の初期状態, 合成後のプロセス)
+concurrentComposition :: Set.Set Event -> [(States,Unfolded)] -> (States,Unfolded)
+concurrentComposition syncEvents exp2 = undefined
+
+-- gen nodeを受け取って、可能なbranchとnodeのペアをリストで返す
+-- que 探察待ちnodeのキュー
+-- hash 探索済みnodeの集合
+-- logs 探索済みbranchのリスト
+bfs :: Ord a => (a -> [(b,a)]) -> (Queue a, Hash a, Logs a b) -> (Queue a, Hash a, Logs a b)
+bfs _ ([],hash,logs) = ([],hash,logs)
+bfs gen ((node:que),hash,logs) = bfs gen
+    ( que ++ news
+    , Set.union hash $ Set.fromList news
+    , logs ++ zipWith3 (,,) branches (repeat node) next_nodes
+    )
+    where
+        (branches,next_nodes) = unzip $ gen node
+        news = filter (\x -> not $ Set.member x hash) next_nodes
+
+next_states :: Unfolded -> States -> Set.Set (Event,States)
+next_states u ss = Set.map (\(e,_,s) -> (e,s)) $ Set.filter (\(_,s,_) -> s == ss) u
+
+ccGenerator :: [Event] -> [Unfolded] -> UnfoldedThread -- States -> [(Event,States)]
+ccGenerator evs us = \states -> undefined
+
+dotUnfolded :: (States,Unfolded) -> String
+dotUnfolded (initState,exp) = [i|digraph {\n#{concatMap f states}#{concatMap g list}}|]
+    where
+        list = Set.toList exp
+        (_,s0,s1) = unzip3 list
+        states = nub $ s0 ++ s1
+        f s = [i|\t#{index states s}[label="#{s}"]\n|]
+        g (e,s0,s1) = [i|\t#{index states s0} -> #{index states s1}[label="#{e}"]\n|]
+
+createPdf fn dot = do
+    writeFile (fn ++ ".dot") dot
+    SP.createProcess (SP.proc "dot" ["-Tpdf", fn ++ ".dot", "-o", fn ++ ".pdf"])
+
+main = do
+    createPdf "output/thread_P" $ dotUnfolded $ unfold thread_P P0
+    SP.createProcess (SP.proc "evince" ["output/thread_P.pdf"])
+
+{-
 count :: (a->Bool) -> [a] -> Int
 count f = (+1) . length . takeWhile (not . f)
 
@@ -78,3 +131,4 @@ main = do
     SP.createProcess (SP.proc "evince" ["output/transition.pdf"])
     putStrLn [i|#{Set.size hash} states.|]
     putStrLn [i|#{length logs} transitions.|]
+-}
