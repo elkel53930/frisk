@@ -1,12 +1,10 @@
-{-# LANGUAGE QuasiQuotes #-}
-
-import Data.String.Interpolate
 import Data.List
 import qualified Data.Set as Set
 import qualified System.Process as SP
 
 import Debug.Trace
 import Type
+import Dot
 
 -- gen nodeを受け取って、可能なbranchとnodeのペアをリストで返す
 -- que 探察待ちnodeのキュー
@@ -23,8 +21,13 @@ bfs gen ((node:que),hash,logs) = bfs gen
         (branches,next_nodes) = unzip $ gen node
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
-main :: IO()
 main = do
-    let thread = thread_Comp thread_P thread_Q
-    let (q,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
-    print $ show l
+--    let thread = thread_Comp thread_P thread_Q
+--    let (_,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
+
+    let thread = thread_P
+    let (_,h,l) = bfs thread ([P0], Set.empty, [])
+
+
+    writeFile "output/process.dot" $ dot (nub l)
+    SP.createProcess (SP.proc "dot" ["-Tpdf", "output/process.dot", "-o", "output/process.pdf"])
