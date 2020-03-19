@@ -22,7 +22,7 @@ bfs gen ((node:que),hash,logs) = bfs gen
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
 main = do
-    let thread = thread_Comp thread_P thread_Q $ Set.fromList [MID]
+    let thread = thread_Comp thread_P thread_Q $ Set.fromList (map MID range)
     let (_,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
 
 --    let thread = thread_P
@@ -31,3 +31,5 @@ main = do
 
     writeFile "output/process.dot" $ dot (nub l)
     SP.createProcess (SP.proc "dot" ["-Tpdf", "output/process.dot", "-o", "output/process.pdf"])
+    SP.createProcess (SP.proc "dot" ["-Tpng", "output/process.dot", "-o", "output/process.png"])
+    

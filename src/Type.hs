@@ -5,22 +5,25 @@ import Data.String.Interpolate
 import qualified Data.Set as Set
 import Data.Semigroup
 
-data Event = IN | MID | OUT deriving (Show, Eq, Ord)
-data State = P0 | P1
-           | Q0 | Q1
+data Event = IN Int | MID Int | OUT Int deriving (Show, Eq, Ord)
+data State = P0 | P1 Int
+           | Q0 | Q1 Int
            | Comp (State, State) deriving (Show, Eq, Ord)
 type Queue a = [a]
 type Hash a = Set.Set a
 type Logs a b = [(b,a,a)] 
 
+range :: [Int]
+range = [0..2]
+
 thread_P :: State -> [(Event, State)]
-thread_P P0 = [(IN,P1)]
-thread_P P1 = [(MID,P0)]
+thread_P P0 = map (\x -> (IN x,P1 x)) range
+thread_P (P1 x) = [(MID x,P0)]
 thread_P _  = undefined
 
 thread_Q :: State -> [(Event, State)]
-thread_Q Q0 = [(MID,Q1)]
-thread_Q Q1 = [(OUT,Q0)]
+thread_Q Q0 = map (\x -> (MID x,Q1 x)) range
+thread_Q (Q1 x) = [(OUT x,Q0)]
 thread_Q _  = undefined
 
 thread_Comp :: (State -> [(Event, State)]) -> (State -> [(Event, State)]) -> Set.Set Event -> State -> [(Event, State)]
