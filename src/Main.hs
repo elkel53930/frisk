@@ -22,11 +22,11 @@ bfs gen ((node:que),hash,logs) = bfs gen
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
 main = do
---    let thread = thread_Comp thread_P thread_Q
---    let (_,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
+    let thread = thread_Comp thread_P thread_Q $ Set.fromList [MID]
+    let (_,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
 
-    let thread = thread_P
-    let (_,h,l) = bfs thread ([P0], Set.empty, [])
+--    let thread = thread_P
+--    let (_,h,l) = bfs thread ([P0], Set.empty, [])
 
 
     writeFile "output/process.dot" $ dot (nub l)
