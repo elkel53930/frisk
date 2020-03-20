@@ -5,33 +5,37 @@ import Data.String.Interpolate
 import qualified Data.Set as Set
 import Data.Semigroup
 
-data Event = A | B deriving (Show, Eq, Ord)
-data State = P0 | P1
-           | Q0 | Q1
-           | R0 | R1
-           | Comp (State, State)
-           | Hidden State deriving (Show, Eq, Ord)
+data Event = A | B
+           | Hidden Event deriving (Show, Eq, Ord)
+data State = P0 | P1 | P2
+           | Q0 | Q1 | Q2
+           | Comp (State, State) deriving (Show, Eq, Ord)
 type Queue a = [a]
 type Hash a = Set.Set a
 type Logs a b = [(b,a,a)] 
+type Error = String
 
 range :: [Int]
 range = [0..2]
 
+isHidden :: Event -> Bool
+isHidden (Hidden _) = True
+isHidden _ = False
+
+hide :: (Event -> Bool) -> [Event] -> [Event]
+hide pred es = map (\e -> if pred e then e else Hidden e) es
+
 thread_P :: State -> [(Event, State)]
 thread_P P0 = [(A,P1)]
-thread_P P1 = [(B,P0)]
+thread_P P1 = [(A,P1),(B,P2)]
+thread_P P2 = [(A,P1)]
 thread_P _  = undefined
 
 thread_Q :: State -> [(Event, State)]
-thread_Q Q0 = [(A,Q1)]
-thread_Q Q1 = [(B,Q0)]
+thread_Q Q0 = [(A,Q1),(A,Q2)]
+thread_Q Q1 = [(A,Q2),(B,Q0)]
+thread_Q Q2 = [(A,Q2),(B,Q0)]
 thread_Q _  = undefined
-
-thread_R :: State -> [(Event, State)]
-thread_R R0 = [(A,R1)]
-thread_R R1 = [(B,R0)]
-thread_R _  = undefined
 
 {-
     parameters

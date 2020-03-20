@@ -1,6 +1,7 @@
 import Data.List
 import qualified Data.Set as Set
 import qualified System.Process as SP
+import Control.Monad
 
 import Debug.Trace
 import Type
@@ -21,6 +22,35 @@ bfs gen ((node:que),hash,logs) = bfs gen
         (branches,next_nodes) = unzip $ gen node
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
+rc_gen :: (State -> [(Event, State)]) -- specification
+       -> (State -> [(Event, State)]) -- implementation
+       -> (State, State) -- (spec State, impl State)
+       -> Either Error [(Event, (State, State))] -- Trace violation or next nodes
+rc_gen spec impl (p, q) = 
+    liftM concat . sequence $ map mkSim (impl q)
+    where
+        find e = filter (\(ev, _) -> ev == e) (spec p)
+        mkSim (u, q') =
+            if isHidden u
+                then Right [(u, (p, q'))]
+                else if length (find u) == 0
+                    then Left "Trace violation"
+                    else Right $ map (\(_, p') -> (u, (p', q'))) $ find u
+
+-- 模倣探索
+bfs_sim :: ((State, State) -> Either Error [(Event, (State, State))])
+        -> (Queue (State, State), Hash (State, State), Logs (State, State) Event)
+        -> Either Error (Queue (State, State), Hash (State, State), Logs (State, State) Event)
+bfs_sim _ ([], hash, logs) = Right ([], hash, logs)
+bfs_sim gen ((node:que),hash,logs) =
+    case liftM unzip $ gen node of
+        Right (branches,next_nodes) -> bfs_sim gen
+            ( que ++ news
+            , Set.union hash $ Set.fromList news
+            , logs ++ zipWith3 (,,) branches (repeat node) next_nodes
+            )
+            where news = filter (\x -> not $ Set.member x hash) next_nodes
+        Left err -> Left err
 
 output filename dotLang = do
     writeFile dotfile $ dotLang
@@ -30,13 +60,9 @@ output filename dotLang = do
         dotfile = filename ++ ".dot"
 
 main = do
-    let thread1 = thread_Comp thread_P thread_Q $ Set.singleton A
-    let (_,h1,l1) = bfs thread1 ([Comp(P0,Q0)], Set.empty, [])
-
-    output "output/process1" . dot $ nub l1
-
-    let thread2 = thread_Comp thread1 thread_R $ Set.singleton A
-    let (_,h2,l2) = bfs thread2 ([Comp(Comp(P0,Q0),R0)], Set.empty, [])
-
-    output "output/process2" . dot $ nub l2
+    let gen = rc_gen thread_P thread_Q
+    case bfs_sim gen ([(P0,Q0)], Set.fromList [(P0,Q0)], []) of
+        Right (_,h3,l3) -> print h3
+        Left err -> print err
+    
     
