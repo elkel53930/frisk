@@ -21,15 +21,22 @@ bfs gen ((node:que),hash,logs) = bfs gen
         (branches,next_nodes) = unzip $ gen node
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
+
+output filename dotLang = do
+    writeFile dotfile $ dotLang
+    SP.createProcess (SP.proc "dot" ["-Tpdf", dotfile, "-o", filename ++ ".pdf"])
+    SP.createProcess (SP.proc "dot" ["-Tpng", dotfile, "-o", filename ++ ".png"])
+    where
+        dotfile = filename ++ ".dot"
+
 main = do
-    let thread = thread_Comp thread_P thread_Q $ Set.fromList (map MID range)
-    let (_,h,l) = bfs thread ([Comp(P0,Q0)], Set.empty, [])
+    let thread1 = thread_Comp thread_P thread_Q $ Set.singleton A
+    let (_,h1,l1) = bfs thread1 ([Comp(P0,Q0)], Set.empty, [])
 
---    let thread = thread_P
---    let (_,h,l) = bfs thread ([P0], Set.empty, [])
+    output "output/process1" . dot $ nub l1
 
+    let thread2 = thread_Comp thread1 thread_R $ Set.singleton A
+    let (_,h2,l2) = bfs thread2 ([Comp(Comp(P0,Q0),R0)], Set.empty, [])
 
-    writeFile "output/process.dot" $ dot (nub l)
-    SP.createProcess (SP.proc "dot" ["-Tpdf", "output/process.dot", "-o", "output/process.pdf"])
-    SP.createProcess (SP.proc "dot" ["-Tpng", "output/process.dot", "-o", "output/process.png"])
+    output "output/process2" . dot $ nub l2
     
