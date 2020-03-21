@@ -22,8 +22,8 @@ bfs gen ((node:que),hash,logs) = bfs gen
         (branches,next_nodes) = unzip $ gen node
         news = filter (\x -> not $ Set.member x hash) next_nodes
 
-rc_gen :: (State -> [(Event, State)]) -- specification
-       -> (State -> [(Event, State)]) -- implementation
+rc_gen :: Process -- specification
+       -> Process -- implementation
        -> (State, State) -- (spec State, impl State)
        -> Either Error [(Event, (State, State))] -- Trace violation or next nodes
 rc_gen spec impl (p, q) = 
@@ -40,7 +40,7 @@ rc_gen spec impl (p, q) =
 -- 模倣探索
 bfs_sim :: ((State, State) -> Either Error [(Event, (State, State))])
         -> (Queue (State, State), Hash (State, State), Logs (State, State) Event)
-        -> Either Error (Queue (State, State), Hash (State, State), Logs (State, State) Event)
+        -> Either (Error, Logs (State, State) Event) (Queue (State, State), Hash (State, State), Logs (State, State) Event)
 bfs_sim _ ([], hash, logs) = Right ([], hash, logs)
 bfs_sim gen ((node:que),hash,logs) =
     case liftM unzip $ gen node of
@@ -50,7 +50,7 @@ bfs_sim gen ((node:que),hash,logs) =
             , logs ++ zipWith3 (,,) branches (repeat node) next_nodes
             )
             where news = filter (\x -> not $ Set.member x hash) next_nodes
-        Left err -> Left err
+        Left err -> Left (err, logs)
 
 output filename dotLang = do
     writeFile dotfile $ dotLang
@@ -60,9 +60,9 @@ output filename dotLang = do
         dotfile = filename ++ ".dot"
 
 main = do
-    let gen = rc_gen thread_P thread_Q
+    let gen = rc_gen process_P process_Q
     case bfs_sim gen ([(P0,Q0)], Set.fromList [(P0,Q0)], []) of
         Right (_,h3,l3) -> print h3
-        Left err -> print err
+        Left (err,elog) -> print elog
     
     

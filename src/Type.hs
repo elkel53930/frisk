@@ -13,6 +13,7 @@ data State = P0 | P1 | P2
 type Queue a = [a]
 type Hash a = Set.Set a
 type Logs a b = [(b,a,a)] 
+type Process = State -> [(Event, State)]
 type Error = String
 
 range :: [Int]
@@ -25,17 +26,17 @@ isHidden _ = False
 hide :: (Event -> Bool) -> [Event] -> [Event]
 hide pred es = map (\e -> if pred e then e else Hidden e) es
 
-thread_P :: State -> [(Event, State)]
-thread_P P0 = [(A,P1)]
-thread_P P1 = [(A,P1),(B,P2)]
-thread_P P2 = [(A,P1)]
-thread_P _  = undefined
+process_P :: Process
+process_P P0 = [(A,P1)]
+process_P P1 = [(A,P1),(B,P2)]
+process_P P2 = [(A,P1)]
+process_P _  = undefined
 
-thread_Q :: State -> [(Event, State)]
-thread_Q Q0 = [(A,Q1),(A,Q2)]
-thread_Q Q1 = [(A,Q2),(B,Q0)]
-thread_Q Q2 = [(A,Q2),(B,Q0)]
-thread_Q _  = undefined
+process_Q :: Process
+process_Q Q0 = [(A,Q1),(A,Q2)]
+process_Q Q1 = [(A,Q2),(B,Q0)]
+process_Q Q2 = [(A,Q2),(B,Q0)]
+process_Q _  = undefined
 
 {-
     parameters
@@ -43,8 +44,8 @@ thread_Q _  = undefined
      thread2
      set of synchronous events
 -}
-thread_Comp :: (State -> [(Event, State)]) -> (State -> [(Event, State)]) -> Set.Set Event -> State -> [(Event, State)]
-thread_Comp p q es s =
+process_Comp :: Process -> Process -> Set.Set Event -> State -> [(Event, State)]
+process_Comp p q es s =
     concat [ getSyncEvents trans_p trans_q es
            , getImdependentEvents trans_p trans_q s es
            ]
