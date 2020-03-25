@@ -9,6 +9,7 @@ data Event = A | B
            | Hidden Event deriving (Show, Eq, Ord)
 data State = P0 | P1 | P2
            | Q0 | Q1 | Q2
+           | Scenario Int
            | Comp (State, State) deriving (Show, Eq, Ord)
 type Queue a = [a]
 type Hash a = Set.Set a
@@ -37,6 +38,12 @@ process_Q Q0 = [(A,Q1),(A,Q2)]
 process_Q Q1 = [(A,Q2),(B,Q0)]
 process_Q Q2 = [(A,Q2),(B,Q0)]
 process_Q _  = undefined
+
+scenario :: [Event] -> Process
+scenario es (Scenario x) =
+    if length es > (x-1)
+        then [(es !! x, Scenario (x+1))]
+        else []
 
 {-
     parameters
