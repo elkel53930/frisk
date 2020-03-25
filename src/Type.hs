@@ -5,9 +5,9 @@ import Data.String.Interpolate
 import qualified Data.Set as Set
 import Data.Semigroup
 
-data Event = A | B
+data Event = A | B | Tau
            | Hidden Event deriving (Show, Eq, Ord)
-data State = P0 | P1 | P2
+data State = P0 | P1 | P2 | P3 | P4
            | Q0 | Q1 | Q2
            | Scenario [Event]
            | Comp (State, State) deriving (Show, Eq, Ord)
@@ -28,15 +28,17 @@ hide :: (Event -> Bool) -> [Event] -> [Event]
 hide pred es = map (\e -> if pred e then e else Hidden e) es
 
 process_P :: Process
-process_P P0 = [(A,P1)]
-process_P P1 = [(A,P1),(B,P2)]
-process_P P2 = [(A,P1)]
+process_P P0 = [(Hidden Tau, P1), (Hidden Tau, P2)]
+process_P P1 = [(A, P3)]
+process_P P2 = [(B, P4)]
+process_P P3 = []
+process_P P4 = []
 process_P _  = undefined
 
 process_Q :: Process
-process_Q Q0 = [(A,Q1),(A,Q2)]
-process_Q Q1 = [(A,Q2),(B,Q0)]
-process_Q Q2 = [(A,Q2),(B,Q0)]
+process_Q Q0 = [(A,Q1),(B,Q2)]
+process_Q Q1 = []
+process_Q Q2 = []
 process_Q _  = undefined
 
 scenario :: Process

@@ -62,8 +62,10 @@ output filename dotLang = do
         dotfile = filename ++ ".dot"
 
 main = do
-    let gen = rc_gen process_P scenario
-    let init = (P0,Scenario [A,B,A,A,B])
+--    let gen = rc_gen process_P scenario
+--    let init = (P0,Scenario [A,B,A,A,B])
+    let gen = rc_gen process_Q process_P
+    let init = (Q0, P0)
     case bfs_sim gen ([init], Set.fromList [init], []) of
         Right (_,h3,l3) -> output "output/trace" $ dot l3
         Left (err,elog) -> print elog
