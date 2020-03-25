@@ -41,7 +41,7 @@ process_Q _  = undefined
 
 scenario :: [Event] -> Process
 scenario es (Scenario x) =
-    if length es > (x-1)
+    if length es > x
         then [(es !! x, Scenario (x+1))]
         else []
 
