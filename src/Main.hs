@@ -52,17 +52,18 @@ bfs_sim gen ((node:que),hash,logs) =
             where news = filter (\x -> not $ Set.member x hash) next_nodes
         Left err -> Left (err, logs)
 
+output :: String -> String -> IO()
 output filename dotLang = do
     writeFile dotfile $ dotLang
     SP.createProcess (SP.proc "dot" ["-Tpdf", dotfile, "-o", filename ++ ".pdf"])
     SP.createProcess (SP.proc "dot" ["-Tpng", dotfile, "-o", filename ++ ".png"])
+    return ()
     where
         dotfile = filename ++ ".dot"
 
 main = do
-    let gen = rc_gen process_P $ scenario [A,B,A,A,B]
-    case bfs_sim gen ([(P0,Scenario 0)], Set.fromList [(P0,Scenario 0)], []) of
-        Right (_,h3,l3) -> print h3
+    let gen = rc_gen process_P scenario
+    let init = (P0,Scenario [A,B,A,A,B])
+    case bfs_sim gen ([init], Set.fromList [init], []) of
+        Right (_,h3,l3) -> output "output/trace" $ dot l3
         Left (err,elog) -> print elog
-    
-    

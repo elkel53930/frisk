@@ -5,12 +5,10 @@ import Data.String.Interpolate
 import Data.Map as Map
 import Type
 
-mkIndex :: Logs State Event -> [(State, Int)]
 mkIndex ls = zipWith (,) states [0..]
     where
         states = nub $ concatMap (\(_,a,b) -> [a,b]) ls
 
-dot :: Logs State Event -> String
 dot ls = 
     concat [ "digraph {\n"
            , [i|#{concatMap nodes index}|]
