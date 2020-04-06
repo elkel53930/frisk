@@ -9,6 +9,7 @@ mkIndex ls = zipWith (,) states [0..]
     where
         states = nub $ concatMap (\(_,a,b) -> [a,b]) ls
 
+dot :: (Foldable t, Show a, Show b, Ord a) => t (b, a, a) -> String
 dot ls = 
     concat [ "digraph {\n"
            , [i|#{concatMap nodes index}|]
